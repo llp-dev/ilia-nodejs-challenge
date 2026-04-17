@@ -5,6 +5,11 @@ import (
 	"testing"
 )
 
+func withDSN(t *testing.T) {
+	t.Helper()
+	t.Setenv("WALLET_DSN", "postgres://user:pass@localhost:5432/wallet")
+}
+
 func TestLoadConfig_Port(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -30,16 +35,17 @@ func TestLoadConfig_Port(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			withDSN(t)
+
 			if tt.envValue != "" {
 				t.Setenv("WALLET_PORT", tt.envValue)
 			} else {
 				os.Unsetenv("WALLET_PORT")
 			}
 
-			cfg := LoadConfig()
-
-			if cfg == nil {
-				t.Fatal("LoadConfig() returned nil")
+			cfg, err := LoadConfig()
+			if err != nil {
+				t.Fatalf("LoadConfig() returned error: %v", err)
 			}
 			if cfg.Port != tt.wantPort {
 				t.Errorf("LoadConfig().Port = %q, want %q", cfg.Port, tt.wantPort)
@@ -78,20 +84,44 @@ func TestLoadConfig_Release(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			withDSN(t)
+
 			if tt.envValue != "" {
 				t.Setenv("WALLET_RELEASE", tt.envValue)
 			} else {
 				os.Unsetenv("WALLET_RELEASE")
 			}
 
-			cfg := LoadConfig()
-
-			if cfg == nil {
-				t.Fatal("LoadConfig() returned nil")
+			cfg, err := LoadConfig()
+			if err != nil {
+				t.Fatalf("LoadConfig() returned error: %v", err)
 			}
 			if cfg.Release != tt.wantRelease {
 				t.Errorf("LoadConfig().Release = %v, want %v", cfg.Release, tt.wantRelease)
 			}
 		})
 	}
+}
+
+func TestLoadConfig_DSN(t *testing.T) {
+	t.Run("errors when WALLET_DSN is not set", func(t *testing.T) {
+		os.Unsetenv("WALLET_DSN")
+		_, err := LoadConfig()
+		if err == nil {
+			t.Fatal("expected error when WALLET_DSN is missing, got nil")
+		}
+	})
+
+	t.Run("uses WALLET_DSN when set", func(t *testing.T) {
+		dsn := "postgres://user:pass@localhost:5432/wallet"
+		t.Setenv("WALLET_DSN", dsn)
+
+		cfg, err := LoadConfig()
+		if err != nil {
+			t.Fatalf("LoadConfig() returned error: %v", err)
+		}
+		if cfg.DSN != dsn {
+			t.Errorf("LoadConfig().DSN = %q, want %q", cfg.DSN, dsn)
+		}
+	})
 }

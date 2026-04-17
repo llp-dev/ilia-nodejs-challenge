@@ -2,13 +2,44 @@ package server
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"wallet/internal/handlers"
+	"wallet/internal/repository"
 )
 
-func SetupRouter() *gin.Engine {
-	r := gin.Default()
+type Server struct {
+	dbPool *pgxpool.Pool
+	router *gin.Engine
+}
 
-	r.GET("/health", handlers.HealthHandler)
+func New(dbPool *pgxpool.Pool) *Server {
+	s := &Server{
+		dbPool: dbPool,
+		router: gin.Default(),
+	}
+	s.setupRoutes()
+	return s
+}
 
-	return r
+func (s *Server) setupRoutes() {
+	walletRepo := repository.NewWalletRepository(s.dbPool)
+	transactionRepo := repository.NewTransactionRepository(s.dbPool)
+
+	walletHandler := handlers.NewWalletHandler(walletRepo)
+	transactionHandler := handlers.NewTransactionHandler(transactionRepo)
+
+	s.router.GET("/health", handlers.HealthHandler)
+
+	wallets := s.router.Group("/wallets")
+	{
+		wallets.GET("", walletHandler.List)
+		wallets.GET("/:id", walletHandler.GetByID)
+		wallets.POST("", walletHandler.Create)
+		wallets.PUT("/:id", walletHandler.UpdateDescription)
+		wallets.POST("/:id/transactions", transactionHandler.Create)
+	}
+}
+
+func (s *Server) Run(port string) error {
+	return s.router.Run(":" + port)
 }
