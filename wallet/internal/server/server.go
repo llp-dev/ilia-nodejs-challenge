@@ -1,6 +1,8 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"wallet/internal/handlers"
@@ -38,6 +40,10 @@ func (s *Server) setupRoutes() {
 		wallets.PUT("/:id", walletHandler.UpdateDescription)
 		wallets.POST("/:id/transactions", transactionHandler.Create)
 	}
+}
+
+func (s *Server) Handler() http.Handler {
+	return s.router
 }
 
 func (s *Server) Run(port string) error {
