@@ -23,6 +23,11 @@ func main() {
 	}
 	defer dbPool.Close()
 
+	err = db.Migrate(cfg.DSN)
+	if err != nil {
+		log.Fatalf("[WALLET] ERROR | migrations: %v\n", err)
+	}
+
 	if cfg.Release {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -31,7 +36,8 @@ func main() {
 
 	s := server.New(dbPool)
 
-	if err := s.Run(cfg.Port); err != nil {
+	err = s.Run(cfg.Port)
+	if err != nil {
 		log.Fatalf("[WALLET] ERROR | Server failed to start: %v\n", err)
 	}
 }
