@@ -10,7 +10,10 @@ import (
 )
 
 func main() {
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("[WALLET] ERROR | %v\n", err)
+	}
 
 	if cfg.Release {
 		gin.SetMode(gin.ReleaseMode)
