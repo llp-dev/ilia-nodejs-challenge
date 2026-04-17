@@ -10,10 +10,10 @@ import (
 )
 
 type WalletHandler struct {
-	repo *repository.WalletRepository
+	repo walletRepository
 }
 
-func NewWalletHandler(repo *repository.WalletRepository) *WalletHandler {
+func NewWalletHandler(repo walletRepository) *WalletHandler {
 	return &WalletHandler{repo: repo}
 }
 
@@ -73,10 +73,10 @@ func (h *WalletHandler) UpdateDescription(c *gin.Context) {
 }
 
 type TransactionHandler struct {
-	repo *repository.TransactionRepository
+	repo transactionRepository
 }
 
-func NewTransactionHandler(repo *repository.TransactionRepository) *TransactionHandler {
+func NewTransactionHandler(repo transactionRepository) *TransactionHandler {
 	return &TransactionHandler{repo: repo}
 }
 
