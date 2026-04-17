@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"wallet/internal/handlers"
+	"wallet/internal/repository"
 )
 
 type Server struct {
@@ -21,7 +22,22 @@ func New(dbPool *pgxpool.Pool) *Server {
 }
 
 func (s *Server) setupRoutes() {
+	walletRepo := repository.NewWalletRepository(s.dbPool)
+	transactionRepo := repository.NewTransactionRepository(s.dbPool)
+
+	walletHandler := handlers.NewWalletHandler(walletRepo)
+	transactionHandler := handlers.NewTransactionHandler(transactionRepo)
+
 	s.router.GET("/health", handlers.HealthHandler)
+
+	wallets := s.router.Group("/wallets")
+	{
+		wallets.GET("", walletHandler.List)
+		wallets.GET("/:id", walletHandler.GetByID)
+		wallets.POST("", walletHandler.Create)
+		wallets.PUT("/:id", walletHandler.UpdateDescription)
+		wallets.POST("/:id/transactions", transactionHandler.Create)
+	}
 }
 
 func (s *Server) Run(port string) error {
