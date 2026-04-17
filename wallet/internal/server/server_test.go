@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestSetupRouter(t *testing.T) {
+func TestServer_Routes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
@@ -39,11 +39,11 @@ func TestSetupRouter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := SetupRouter()
+			s := New(nil)
 
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(tt.method, tt.path, nil)
-			r.ServeHTTP(w, req)
+			s.router.ServeHTTP(w, req)
 
 			if w.Code != tt.wantStatusCode {
 				t.Errorf("status code = %d, want %d", w.Code, tt.wantStatusCode)
