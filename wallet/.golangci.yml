@@ -1,0 +1,24 @@
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - goimports
+    - gosec
+    - misspell
+    - noctx
+    - bodyclose
+
+linters-settings:
+  gosec:
+    severity: medium
+    confidence: medium
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
