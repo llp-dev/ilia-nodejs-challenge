@@ -41,6 +41,14 @@ func (r *TransactionRepository) Create(ctx context.Context, walletID string, val
 		return nil, fmt.Errorf("update wallet balance: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
+		var exists bool
+		err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM wallets WHERE id = $1)`, walletID).Scan(&exists)
+		if err != nil {
+			return nil, fmt.Errorf("check wallet existence: %w", err)
+		}
+		if !exists {
+			return nil, ErrWalletNotFound
+		}
 		return nil, ErrInsufficientBalance
 	}
 
