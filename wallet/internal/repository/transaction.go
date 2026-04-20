@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
 	"wallet/internal/models"
@@ -14,6 +15,7 @@ import (
 
 var ErrInsufficientBalance = errors.New("insufficient balance")
 var ErrWalletNotFound = errors.New("wallet not found")
+var ErrDuplicateOperation = errors.New("operation already processed")
 
 type TransactionRepository struct {
 	dbPool *pgxpool.Pool
@@ -67,6 +69,10 @@ func (r *TransactionRepository) Create(ctx context.Context, walletID string, val
 		t.ID, t.WalletID, t.Value.String(), t.Description, t.OperationID, t.CreatedAt,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrDuplicateOperation
+		}
 		return nil, fmt.Errorf("insert transaction: %w", err)
 	}
 

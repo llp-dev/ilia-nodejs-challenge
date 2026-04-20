@@ -103,4 +103,19 @@ func TestTransactionRepository_Create(t *testing.T) {
 			t.Fatal("expected error for non-existent wallet, got nil")
 		}
 	})
+
+	t.Run("fails on duplicate operation_id", func(t *testing.T) {
+		testhelper.Truncate(t, testPool)
+		walletID := setupWallet(t, walletRepo, txRepo, "100")
+
+		_, err := txRepo.Create(ctx, walletID, decimal.NewFromInt(10), "first", "00000000-0000-0000-0000-000000000006")
+		if err != nil {
+			t.Fatalf("first Create() error = %v", err)
+		}
+
+		_, err = txRepo.Create(ctx, walletID, decimal.NewFromInt(10), "duplicate", "00000000-0000-0000-0000-000000000006")
+		if err != repository.ErrDuplicateOperation {
+			t.Errorf("error = %v, want ErrDuplicateOperation", err)
+		}
+	})
 }

@@ -137,6 +137,22 @@ func TestTransactionHandler_Create(t *testing.T) {
 		}
 	})
 
+	t.Run("returns 409 for duplicate operation_id", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{
+			"value":        "10.00",
+			"description":  "duplicate",
+			"operation_id": "550e8400-e29b-41d4-a716-446655440010",
+		})
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/wallets/"+wallet.ID+"/transactions", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusConflict {
+			t.Errorf("status = %d, want %d", w.Code, http.StatusConflict)
+		}
+	})
+
 	t.Run("returns 400 for invalid value format", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]string{
 			"value":        "not-a-number",
