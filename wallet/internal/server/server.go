@@ -13,16 +13,18 @@ import (
 const maxBodyBytes = 64 * 1024 // 64 KB
 
 type Server struct {
-	dbPool    *pgxpool.Pool
-	router    *gin.Engine
-	jwtSecret string
+	dbPool            *pgxpool.Pool
+	router            *gin.Engine
+	jwtSecret         string
+	jwtInternalSecret string
 }
 
-func New(dbPool *pgxpool.Pool, jwtSecret string) *Server {
+func New(dbPool *pgxpool.Pool, jwtSecret, jwtInternalSecret string) *Server {
 	s := &Server{
-		dbPool:    dbPool,
-		router:    gin.Default(),
-		jwtSecret: jwtSecret,
+		dbPool:            dbPool,
+		router:            gin.Default(),
+		jwtSecret:         jwtSecret,
+		jwtInternalSecret: jwtInternalSecret,
 	}
 	s.setupRoutes()
 	return s
@@ -49,6 +51,12 @@ func (s *Server) setupRoutes() {
 		wallets.POST("", walletHandler.Create)
 		wallets.PUT("/:id", walletHandler.UpdateDescription)
 		wallets.POST("/:id/transactions", transactionHandler.Create)
+	}
+
+	internal := s.router.Group("/internal", middleware.JWT(s.jwtInternalSecret))
+	{
+		internal.POST("/wallets", walletHandler.Create)
+		internal.GET("/wallets/:id", walletHandler.GetByID)
 	}
 }
 

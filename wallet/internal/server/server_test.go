@@ -10,7 +10,7 @@ import (
 
 func TestServer_Handler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	s := New(nil, "test-secret")
+	s := New(nil, "test-secret", "test-internal-secret")
 	h := s.Handler()
 	if h == nil {
 		t.Fatal("Handler() returned nil")
@@ -55,7 +55,7 @@ func TestServer_Routes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := New(nil, "test-secret")
+			s := New(nil, "test-secret", "test-internal-secret")
 
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(tt.method, tt.path, nil)

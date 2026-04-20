@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 	pool, cleanup := testhelper.NewPostgresContainer(m)
 	testPool = pool
 
-	s := server.New(pool, testSecret)
+	s := server.New(pool, testSecret, testSecret)
 	testServer = httptest.NewServer(s.Handler())
 
 	code := m.Run()
