@@ -6,18 +6,21 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"wallet/internal/handlers"
+	"wallet/internal/middleware"
 	"wallet/internal/repository"
 )
 
 type Server struct {
-	dbPool *pgxpool.Pool
-	router *gin.Engine
+	dbPool    *pgxpool.Pool
+	router    *gin.Engine
+	jwtSecret string
 }
 
-func New(dbPool *pgxpool.Pool) *Server {
+func New(dbPool *pgxpool.Pool, jwtSecret string) *Server {
 	s := &Server{
-		dbPool: dbPool,
-		router: gin.Default(),
+		dbPool:    dbPool,
+		router:    gin.Default(),
+		jwtSecret: jwtSecret,
 	}
 	s.setupRoutes()
 	return s
@@ -32,7 +35,7 @@ func (s *Server) setupRoutes() {
 
 	s.router.GET("/health", handlers.HealthHandler)
 
-	wallets := s.router.Group("/wallets")
+	wallets := s.router.Group("/wallets", middleware.JWT(s.jwtSecret))
 	{
 		wallets.GET("", walletHandler.List)
 		wallets.GET("/:id", walletHandler.GetByID)
