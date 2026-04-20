@@ -23,7 +23,7 @@ services:
     image: wallet-api:latest
     restart: unless-stopped
     environment:
-      WALLET_DSN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@wallet-db:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+      WALLET_DSN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@wallet-db:5432/${POSTGRES_DB}?sslmode=disable
       WALLET_PORT: ${WALLET_PORT:-3001}
       WALLET_RELEASE: ${WALLET_RELEASE:-true}
       WALLET_JWT_SECRET: ${WALLET_JWT_SECRET:-ILIACHALLENGE}
