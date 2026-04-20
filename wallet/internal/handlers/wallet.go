@@ -112,6 +112,10 @@ func (h *TransactionHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid value"})
 		return
 	}
+	if value.IsZero() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "value must be non-zero"})
+		return
+	}
 
 	t, err := h.repo.Create(c.Request.Context(), walletID, value, body.Description, body.OperationID)
 	if err != nil {
