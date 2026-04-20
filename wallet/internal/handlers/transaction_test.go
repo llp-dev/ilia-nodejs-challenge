@@ -2,14 +2,12 @@ package handlers_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
 	"wallet/internal/handlers"
 	"wallet/internal/models"
 	"wallet/internal/repository"
@@ -18,25 +16,21 @@ import (
 
 func newTransactionRouter() *gin.Engine {
 	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", testUserID)
+		c.Next()
+	})
+	walletRepo := repository.NewWalletRepository(testPool)
 	txRepo := repository.NewTransactionRepository(testPool)
-	h := handlers.NewTransactionHandler(txRepo)
+	h := handlers.NewTransactionHandler(txRepo, walletRepo)
 	r.POST("/wallets/:id/transactions", h.Create)
 	return r
-}
-
-func seedBalance(t *testing.T, walletID string, amount string) {
-	t.Helper()
-	txRepo := repository.NewTransactionRepository(testPool)
-	_, err := txRepo.Create(context.Background(), walletID, decimal.RequireFromString(amount), "seed", "00000000-0000-0000-0000-000000000099")
-	if err != nil {
-		t.Fatalf("seed balance: %v", err)
-	}
 }
 
 func TestTransactionHandler_Create(t *testing.T) {
 	testhelper.Truncate(t, testPool)
 	r := newTransactionRouter()
-	wallet := createWallet(t, "550e8400-e29b-41d4-a716-446655440000", "test wallet")
+	wallet := createWallet(t, testUserID, "test wallet")
 
 	t.Run("credits wallet", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]string{
@@ -182,6 +176,23 @@ func TestTransactionHandler_Create(t *testing.T) {
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		}
+	})
+
+	t.Run("returns 403 for wallet owned by another user", func(t *testing.T) {
+		other := createWallet(t, "550e8400-e29b-41d4-a716-446655440001", "other user wallet")
+		body, _ := json.Marshal(map[string]string{
+			"value":        "10.00",
+			"description":  "hijack",
+			"operation_id": "550e8400-e29b-41d4-a716-446655440017",
+		})
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/wallets/"+other.ID+"/transactions", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
 		}
 	})
 }

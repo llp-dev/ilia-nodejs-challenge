@@ -8,7 +8,7 @@ import (
 )
 
 type walletRepository interface {
-	List(ctx context.Context) ([]models.Wallet, error)
+	ListByUserID(ctx context.Context, userID string) ([]models.Wallet, error)
 	GetByID(ctx context.Context, id string) (*models.Wallet, error)
 	Create(ctx context.Context, userID, description string) (*models.Wallet, error)
 	UpdateDescription(ctx context.Context, id, description string) (*models.Wallet, error)

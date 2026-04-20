@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
+	"wallet/internal/models"
 	"wallet/internal/repository"
 	"wallet/internal/usersclient"
 )
@@ -23,11 +24,15 @@ func NewWalletHandler(repo walletRepository, users usersClient) *WalletHandler {
 }
 
 func (h *WalletHandler) List(c *gin.Context) {
-	wallets, err := h.repo.List(c.Request.Context())
+	userID := c.GetString("userID")
+	wallets, err := h.repo.ListByUserID(c.Request.Context(), userID)
 	if err != nil {
 		log.Printf("[WALLET] ERROR | List wallets: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
+	}
+	if wallets == nil {
+		wallets = []models.Wallet{}
 	}
 	c.JSON(http.StatusOK, wallets)
 }
@@ -37,6 +42,10 @@ func (h *WalletHandler) GetByID(c *gin.Context) {
 	wallet, err := h.repo.GetByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "wallet not found"})
+		return
+	}
+	if wallet.UserID != c.GetString("userID") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
 	}
 	c.JSON(http.StatusOK, wallet)
@@ -79,6 +88,17 @@ func (h *WalletHandler) Create(c *gin.Context) {
 
 func (h *WalletHandler) UpdateDescription(c *gin.Context) {
 	id := c.Param("id")
+
+	existing, err := h.repo.GetByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "wallet not found"})
+		return
+	}
+	if existing.UserID != c.GetString("userID") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+
 	var body struct {
 		Description string `json:"description"`
 	}
@@ -106,15 +126,26 @@ func (h *WalletHandler) UpdateDescription(c *gin.Context) {
 }
 
 type TransactionHandler struct {
-	repo transactionRepository
+	repo    transactionRepository
+	wallets walletRepository
 }
 
-func NewTransactionHandler(repo transactionRepository) *TransactionHandler {
-	return &TransactionHandler{repo: repo}
+func NewTransactionHandler(repo transactionRepository, wallets walletRepository) *TransactionHandler {
+	return &TransactionHandler{repo: repo, wallets: wallets}
 }
 
 func (h *TransactionHandler) Create(c *gin.Context) {
 	walletID := c.Param("id")
+
+	wallet, err := h.wallets.GetByID(c.Request.Context(), walletID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "wallet not found"})
+		return
+	}
+	if wallet.UserID != c.GetString("userID") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
 	var body struct {
 		Value       string `json:"value" binding:"required"`
 		Description string `json:"description"`

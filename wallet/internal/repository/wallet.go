@@ -19,9 +19,10 @@ func NewWalletRepository(dbPool *pgxpool.Pool) *WalletRepository {
 	return &WalletRepository{dbPool: dbPool}
 }
 
-func (r *WalletRepository) List(ctx context.Context) ([]models.Wallet, error) {
+func (r *WalletRepository) ListByUserID(ctx context.Context, userID string) ([]models.Wallet, error) {
 	rows, err := r.dbPool.Query(ctx,
-		`SELECT id, user_id, description, balance, created_at, updated_at FROM wallets ORDER BY created_at DESC`,
+		`SELECT id, user_id, description, balance, created_at, updated_at FROM wallets WHERE user_id = $1 ORDER BY created_at DESC`,
+		userID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list wallets: %w", err)

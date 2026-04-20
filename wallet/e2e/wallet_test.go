@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
 	"wallet/internal/models"
 	"wallet/internal/testhelper"
 )
@@ -66,6 +67,84 @@ func TestWalletLifecycle(t *testing.T) {
 	if after.Balance.String() != "60" {
 		t.Errorf("balance = %s after rejected overdraft, want 60", after.Balance.String())
 	}
+}
+
+func TestWallet_Ownership(t *testing.T) {
+	testhelper.Truncate(t, testPool)
+
+	// Create a wallet belonging to testUserID via the normal flow.
+	wallet := createWalletE2E(t, testUserID, "my wallet")
+
+	// Build a second JWT for a different user.
+	otherID := "00000000-0000-0000-0000-aaaaaaaaaaaa"
+	otherToken, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":   otherID,
+		"email": "other@example.com",
+	}).SignedString([]byte(testSecret))
+	otherAuth := func(method, url string, body interface{ Read([]byte) (int, error) }) *http.Request {
+		var req *http.Request
+		if body != nil {
+			req, _ = http.NewRequest(method, url, body)
+		} else {
+			req, _ = http.NewRequest(method, url, nil)
+		}
+		req.Header.Set("Authorization", "Bearer "+otherToken)
+		req.Header.Set("Content-Type", "application/json")
+		return req
+	}
+
+	t.Run("get wallet owned by another user returns 403", func(t *testing.T) {
+		resp, err := http.DefaultClient.Do(otherAuth(http.MethodGet, testServer.URL+"/wallets/"+wallet.ID, nil))
+		if err != nil {
+			t.Fatalf("GET: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("status = %d, want 403", resp.StatusCode)
+		}
+	})
+
+	t.Run("update wallet owned by another user returns 403", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"description": "hijack"})
+		resp, err := http.DefaultClient.Do(otherAuth(http.MethodPut, testServer.URL+"/wallets/"+wallet.ID, bytes.NewReader(body)))
+		if err != nil {
+			t.Fatalf("PUT: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("status = %d, want 403", resp.StatusCode)
+		}
+	})
+
+	t.Run("transaction on wallet owned by another user returns 403", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{
+			"value": "10.00", "description": "hijack", "operation_id": "550e8400-e29b-41d4-a716-000000000099",
+		})
+		resp, err := http.DefaultClient.Do(otherAuth(http.MethodPost, testServer.URL+"/wallets/"+wallet.ID+"/transactions", bytes.NewReader(body)))
+		if err != nil {
+			t.Fatalf("POST: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("status = %d, want 403", resp.StatusCode)
+		}
+	})
+
+	t.Run("list returns only own wallets", func(t *testing.T) {
+		resp, err := http.DefaultClient.Do(otherAuth(http.MethodGet, testServer.URL+"/wallets", nil))
+		if err != nil {
+			t.Fatalf("GET: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want 200", resp.StatusCode)
+		}
+		var wallets []models.Wallet
+		json.NewDecoder(resp.Body).Decode(&wallets)
+		if len(wallets) != 0 {
+			t.Errorf("expected 0 wallets for other user, got %d", len(wallets))
+		}
+	})
 }
 
 func TestWallet_NotFound(t *testing.T) {
