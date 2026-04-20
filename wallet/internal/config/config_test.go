@@ -11,6 +11,7 @@ func withRequiredEnvs(t *testing.T) {
 	t.Setenv("WALLET_PORT", "3001")
 	t.Setenv("WALLET_JWT_SECRET", "ILIACHALLENGE")
 	t.Setenv("WALLET_JWT_INTERNAL_SECRET", "ILIACHALLENGE_INTERNAL")
+	t.Setenv("WALLET_USERS_URL", "http://users-api:3002")
 }
 
 func TestLoadConfig_Port(t *testing.T) {
