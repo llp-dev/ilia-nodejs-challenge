@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -22,7 +23,8 @@ func NewWalletHandler(repo walletRepository) *WalletHandler {
 func (h *WalletHandler) List(c *gin.Context) {
 	wallets, err := h.repo.List(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[WALLET] ERROR | List wallets: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 	c.JSON(http.StatusOK, wallets)
@@ -50,7 +52,8 @@ func (h *WalletHandler) Create(c *gin.Context) {
 
 	wallet, err := h.repo.Create(c.Request.Context(), body.UserID, body.Description)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[WALLET] ERROR | Create wallet: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 	c.JSON(http.StatusCreated, wallet)
@@ -120,7 +123,8 @@ func (h *TransactionHandler) Create(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[WALLET] ERROR | Create transaction: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 	c.JSON(http.StatusCreated, t)
