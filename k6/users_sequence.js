@@ -31,10 +31,14 @@ export default function () {
   let token = '';
   let userID = '';
 
+  // ── health ────────────────────────────────────────────────────────────────
+
   group('health', () => {
     const res = http.get(`${BASE_URL}/health`);
     check(res, { 'GET /health returns 200': (r) => r.status === 200 });
   });
+
+  // ── registration ──────────────────────────────────────────────────────────
 
   group('register', () => {
     const res = http.post(
@@ -59,7 +63,7 @@ export default function () {
     check(res, { 'duplicate register returns 409': (r) => r.status === 409 });
   });
 
-  group('register validation', () => {
+  group('register validation: short name + bad email + short password', () => {
     const res = http.post(
       `${BASE_URL}/users`,
       JSON.stringify({ name: 'X', email: 'not-an-email', password: 'short' }),
@@ -67,6 +71,53 @@ export default function () {
     );
     check(res, { 'invalid register returns 400': (r) => r.status === 400 });
   });
+
+  group('register validation: missing name', () => {
+    const res = http.post(
+      `${BASE_URL}/users`,
+      JSON.stringify({ email: `missing-name-${uuidv4()}@example.com`, password }),
+      { headers }
+    );
+    check(res, { 'missing name returns 400': (r) => r.status === 400 });
+  });
+
+  group('register validation: missing email', () => {
+    const res = http.post(
+      `${BASE_URL}/users`,
+      JSON.stringify({ name: 'No Email', password }),
+      { headers }
+    );
+    check(res, { 'missing email returns 400': (r) => r.status === 400 });
+  });
+
+  group('register validation: missing password', () => {
+    const res = http.post(
+      `${BASE_URL}/users`,
+      JSON.stringify({ name: 'No Pass', email: `no-pass-${uuidv4()}@example.com` }),
+      { headers }
+    );
+    check(res, { 'missing password returns 400': (r) => r.status === 400 });
+  });
+
+  group('register validation: email format @example.com', () => {
+    const res = http.post(
+      `${BASE_URL}/users`,
+      JSON.stringify({ name: 'Bad Email', email: '@example.com', password }),
+      { headers }
+    );
+    check(res, { '@example.com returns 400': (r) => r.status === 400 });
+  });
+
+  group('register validation: email format user@', () => {
+    const res = http.post(
+      `${BASE_URL}/users`,
+      JSON.stringify({ name: 'Bad Email', email: 'user@', password }),
+      { headers }
+    );
+    check(res, { 'user@ returns 400': (r) => r.status === 400 });
+  });
+
+  // ── login ─────────────────────────────────────────────────────────────────
 
   group('login', () => {
     const res = http.post(
@@ -85,11 +136,22 @@ export default function () {
   group('login wrong password returns 401', () => {
     const res = http.post(
       `${BASE_URL}/sessions`,
-      JSON.stringify({ email, password: 'wrongpass' }),
+      JSON.stringify({ email, password: 'wrongpass123' }),
       { headers }
     );
     check(res, { 'wrong password returns 401': (r) => r.status === 401 });
   });
+
+  group('login non-existent email returns 401', () => {
+    const res = http.post(
+      `${BASE_URL}/sessions`,
+      JSON.stringify({ email: `ghost-${uuidv4()}@example.com`, password }),
+      { headers }
+    );
+    check(res, { 'non-existent email returns 401': (r) => r.status === 401 });
+  });
+
+  // ── profile ───────────────────────────────────────────────────────────────
 
   group('get me', () => {
     const res = http.get(`${BASE_URL}/users/me`, { headers: authHeaders(token) });
@@ -104,7 +166,9 @@ export default function () {
     check(res, { 'no-token returns 401': (r) => r.status === 401 });
   });
 
-  group('update me', () => {
+  // ── update profile ────────────────────────────────────────────────────────
+
+  group('update me: name', () => {
     const res = http.put(
       `${BASE_URL}/users/me`,
       JSON.stringify({ name: 'Updated Name' }),
@@ -116,6 +180,68 @@ export default function () {
     });
   });
 
+  group('update me: email', () => {
+    const newEmail = `updated-${uuidv4()}@example.com`;
+    const res = http.put(
+      `${BASE_URL}/users/me`,
+      JSON.stringify({ email: newEmail }),
+      { headers: authHeaders(token) }
+    );
+    check(res, {
+      'email update returns 200': (r) => r.status === 200,
+      'email updated': (r) => r.json('email') === newEmail,
+    });
+  });
+
+  group('update me: email to already-taken email → 409', () => {
+    // Register a second user
+    const takenEmail = `taken-${uuidv4()}@example.com`;
+    http.post(
+      `${BASE_URL}/users`,
+      JSON.stringify({ name: 'Taken', email: takenEmail, password }),
+      { headers }
+    );
+    const res = http.put(
+      `${BASE_URL}/users/me`,
+      JSON.stringify({ email: takenEmail }),
+      { headers: authHeaders(token) }
+    );
+    check(res, { 'taken email update returns 409': (r) => r.status === 409 });
+  });
+
+  group('update me: password then re-login', () => {
+    const newPassword = 'newPassword456';
+    // Get current email from profile
+    const me = http.get(`${BASE_URL}/users/me`, { headers: authHeaders(token) });
+    const currentEmail = me.json('email');
+
+    const res = http.put(
+      `${BASE_URL}/users/me`,
+      JSON.stringify({ password: newPassword }),
+      { headers: authHeaders(token) }
+    );
+    check(res, { 'password update returns 200': (r) => r.status === 200 });
+
+    // Login with new password
+    const loginRes = http.post(
+      `${BASE_URL}/sessions`,
+      JSON.stringify({ email: currentEmail, password: newPassword }),
+      { headers }
+    );
+    check(loginRes, { 'login with new password → 200': (r) => r.status === 200 });
+
+    // Old password should fail
+    const oldLoginRes = http.post(
+      `${BASE_URL}/sessions`,
+      JSON.stringify({ email: currentEmail, password }),
+      { headers }
+    );
+    check(oldLoginRes, { 'login with old password → 401': (r) => r.status === 401 });
+
+    // Update token for remaining tests
+    token = loginRes.json('token');
+  });
+
   group('update me with empty body returns 400', () => {
     const res = http.put(
       `${BASE_URL}/users/me`,
@@ -123,5 +249,23 @@ export default function () {
       { headers: authHeaders(token) }
     );
     check(res, { 'empty update returns 400': (r) => r.status === 400 });
+  });
+
+  group('update me: short password returns 400', () => {
+    const res = http.put(
+      `${BASE_URL}/users/me`,
+      JSON.stringify({ password: 'short' }),
+      { headers: authHeaders(token) }
+    );
+    check(res, { 'short password update returns 400': (r) => r.status === 400 });
+  });
+
+  group('update me: invalid email format returns 400', () => {
+    const res = http.put(
+      `${BASE_URL}/users/me`,
+      JSON.stringify({ email: 'not-an-email' }),
+      { headers: authHeaders(token) }
+    );
+    check(res, { 'invalid email update returns 400': (r) => r.status === 400 });
   });
 }
