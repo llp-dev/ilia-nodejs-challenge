@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// JWT validates a Bearer HS256 token and stores "userID" (sub) and "userEmail" in the context.
+// JWT validates a Bearer HS256 token and stores "userID" (sub) in the context.
 func JWT(secret string) gin.HandlerFunc {
 	key := []byte(secret)
 	return func(c *gin.Context) {
@@ -34,10 +34,12 @@ func JWT(secret string) gin.HandlerFunc {
 		}
 
 		sub, _ := claims.GetSubject()
-		email, _ := claims["email"].(string)
+		if sub == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			return
+		}
 
 		c.Set("userID", sub)
-		c.Set("userEmail", email)
 		c.Next()
 	}
 }

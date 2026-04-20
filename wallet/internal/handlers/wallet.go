@@ -10,14 +10,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"wallet/internal/repository"
+	"wallet/internal/usersclient"
 )
 
 type WalletHandler struct {
-	repo walletRepository
+	repo  walletRepository
+	users usersClient
 }
 
-func NewWalletHandler(repo walletRepository) *WalletHandler {
-	return &WalletHandler{repo: repo}
+func NewWalletHandler(repo walletRepository, users usersClient) *WalletHandler {
+	return &WalletHandler{repo: repo, users: users}
 }
 
 func (h *WalletHandler) List(c *gin.Context) {
@@ -47,6 +49,22 @@ func (h *WalletHandler) Create(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	jwtEmail := c.GetString("userEmail")
+	userEmail, err := h.users.GetUser(c.Request.Context(), body.UserID)
+	if err != nil {
+		if errors.Is(err, usersclient.ErrUserNotFound) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "invalid user_id"})
+			return
+		}
+		log.Printf("[WALLET] ERROR | GetUser: %v\n", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "users service unavailable"})
+		return
+	}
+	if userEmail != jwtEmail {
+		c.JSON(http.StatusForbidden, gin.H{"error": "user_id does not match authenticated user"})
 		return
 	}
 

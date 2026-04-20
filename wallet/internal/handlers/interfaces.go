@@ -17,3 +17,7 @@ type walletRepository interface {
 type transactionRepository interface {
 	Create(ctx context.Context, walletID string, value decimal.Decimal, description, operationID string) (*models.Transaction, error)
 }
+
+type usersClient interface {
+	GetUser(ctx context.Context, userID string) (string, error)
+}

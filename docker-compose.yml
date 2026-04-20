@@ -27,11 +27,52 @@ services:
       WALLET_PORT: ${WALLET_PORT:-3001}
       WALLET_RELEASE: ${WALLET_RELEASE:-true}
       WALLET_JWT_SECRET: ${WALLET_JWT_SECRET:-ILIACHALLENGE}
+      WALLET_JWT_INTERNAL_SECRET: ${WALLET_JWT_INTERNAL_SECRET:-ILIACHALLENGE_INTERNAL}
+      WALLET_USERS_URL: ${WALLET_USERS_URL:-http://users-api:3002}
     ports:
       - "${WALLET_PORT:-3001}:${WALLET_PORT:-3001}"
     depends_on:
       wallet-db:
         condition: service_healthy
 
+  users-db:
+    image: docker.io/library/postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${USERS_DB_USER:-users}
+      POSTGRES_PASSWORD: ${USERS_DB_PASSWORD:-secret}
+      POSTGRES_DB: ${USERS_DB_NAME:-users}
+    ports:
+      - "${USERS_DB_PORT:-5433}:5432"
+    volumes:
+      - users_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USERS_DB_USER:-users} -d ${USERS_DB_NAME:-users}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  users-api:
+    build:
+      context: ./users
+      dockerfile: Dockerfile
+    image: users-api:latest
+    restart: unless-stopped
+    environment:
+      USERS_DSN: postgres://${USERS_DB_USER:-users}:${USERS_DB_PASSWORD:-secret}@users-db:5432/${USERS_DB_NAME:-users}?sslmode=disable
+      USERS_PORT: ${USERS_PORT:-3002}
+      USERS_RELEASE: ${USERS_RELEASE:-true}
+      USERS_JWT_SECRET: ${USERS_JWT_SECRET:-ILIACHALLENGE}
+      USERS_JWT_INTERNAL_SECRET: ${USERS_JWT_INTERNAL_SECRET:-ILIACHALLENGE_INTERNAL}
+      USERS_WALLET_URL: http://wallet-api:${WALLET_PORT:-3001}
+    ports:
+      - "${USERS_PORT:-3002}:${USERS_PORT:-3002}"
+    depends_on:
+      users-db:
+        condition: service_healthy
+      wallet-api:
+        condition: service_started
+
 volumes:
   pgdata:
+  users_pgdata:

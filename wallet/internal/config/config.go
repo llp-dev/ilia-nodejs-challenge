@@ -6,10 +6,12 @@ import (
 )
 
 type Config struct {
-	Port      string
-	Release   bool
-	DSN       string
-	JWTSecret string
+	Port              string
+	Release           bool
+	DSN               string
+	JWTSecret         string
+	JWTInternalSecret string
+	UsersURL          string
 }
 
 func LoadConfig() (*Config, error) {
@@ -28,12 +30,24 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("WALLET_JWT_SECRET environment variable is required")
 	}
 
+	jwtInternalSecret := os.Getenv("WALLET_JWT_INTERNAL_SECRET")
+	if jwtInternalSecret == "" {
+		return nil, fmt.Errorf("WALLET_JWT_INTERNAL_SECRET environment variable is required")
+	}
+
+	usersURL := os.Getenv("WALLET_USERS_URL")
+	if usersURL == "" {
+		return nil, fmt.Errorf("WALLET_USERS_URL environment variable is required")
+	}
+
 	release := os.Getenv("WALLET_RELEASE") == "true"
 
 	return &Config{
-		Port:      port,
-		Release:   release,
-		DSN:       dsn,
-		JWTSecret: jwtSecret,
+		Port:              port,
+		Release:           release,
+		DSN:               dsn,
+		JWTSecret:         jwtSecret,
+		JWTInternalSecret: jwtInternalSecret,
+		UsersURL:          usersURL,
 	}, nil
 }

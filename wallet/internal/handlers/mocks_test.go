@@ -42,3 +42,12 @@ type mockTransactionRepo struct {
 func (m *mockTransactionRepo) Create(ctx context.Context, walletID string, value decimal.Decimal, description, operationID string) (*models.Transaction, error) {
 	return m.createFn(ctx, walletID, value, description, operationID)
 }
+
+// mockUsersClient is a configurable stub for the usersClient interface.
+type mockUsersClient struct {
+	getUserFn func(ctx context.Context, userID string) (string, error)
+}
+
+func (m *mockUsersClient) GetUser(ctx context.Context, userID string) (string, error) {
+	return m.getUserFn(ctx, userID)
+}

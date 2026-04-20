@@ -8,21 +8,26 @@ import (
 	"wallet/internal/handlers"
 	"wallet/internal/middleware"
 	"wallet/internal/repository"
+	"wallet/internal/usersclient"
 )
 
 const maxBodyBytes = 64 * 1024 // 64 KB
 
 type Server struct {
-	dbPool    *pgxpool.Pool
-	router    *gin.Engine
-	jwtSecret string
+	dbPool            *pgxpool.Pool
+	router            *gin.Engine
+	jwtSecret         string
+	jwtInternalSecret string
+	usersURL          string
 }
 
-func New(dbPool *pgxpool.Pool, jwtSecret string) *Server {
+func New(dbPool *pgxpool.Pool, jwtSecret, jwtInternalSecret, usersURL string) *Server {
 	s := &Server{
-		dbPool:    dbPool,
-		router:    gin.Default(),
-		jwtSecret: jwtSecret,
+		dbPool:            dbPool,
+		router:            gin.Default(),
+		jwtSecret:         jwtSecret,
+		jwtInternalSecret: jwtInternalSecret,
+		usersURL:          usersURL,
 	}
 	s.setupRoutes()
 	return s
@@ -37,7 +42,8 @@ func (s *Server) setupRoutes() {
 	walletRepo := repository.NewWalletRepository(s.dbPool)
 	transactionRepo := repository.NewTransactionRepository(s.dbPool)
 
-	walletHandler := handlers.NewWalletHandler(walletRepo)
+	usersClient := usersclient.New(s.usersURL, s.jwtInternalSecret)
+	walletHandler := handlers.NewWalletHandler(walletRepo, usersClient)
 	transactionHandler := handlers.NewTransactionHandler(transactionRepo)
 
 	s.router.GET("/health", handlers.HealthHandler)
@@ -50,6 +56,7 @@ func (s *Server) setupRoutes() {
 		wallets.PUT("/:id", walletHandler.UpdateDescription)
 		wallets.POST("/:id/transactions", transactionHandler.Create)
 	}
+
 }
 
 func (s *Server) Handler() http.Handler {

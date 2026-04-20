@@ -10,6 +10,8 @@ func withRequiredEnvs(t *testing.T) {
 	t.Setenv("WALLET_DSN", "postgres://user:pass@localhost:5432/wallet")
 	t.Setenv("WALLET_PORT", "3001")
 	t.Setenv("WALLET_JWT_SECRET", "ILIACHALLENGE")
+	t.Setenv("WALLET_JWT_INTERNAL_SECRET", "ILIACHALLENGE_INTERNAL")
+	t.Setenv("WALLET_USERS_URL", "http://users-api:3002")
 }
 
 func TestLoadConfig_Port(t *testing.T) {
@@ -155,6 +157,30 @@ func TestLoadConfig_JWTSecret(t *testing.T) {
 		}
 		if cfg.JWTSecret != "mysecret" {
 			t.Errorf("LoadConfig().JWTSecret = %q, want %q", cfg.JWTSecret, "mysecret")
+		}
+	})
+}
+
+func TestLoadConfig_JWTInternalSecret(t *testing.T) {
+	t.Run("errors when WALLET_JWT_INTERNAL_SECRET is not set", func(t *testing.T) {
+		withRequiredEnvs(t)
+		os.Unsetenv("WALLET_JWT_INTERNAL_SECRET")
+		_, err := LoadConfig()
+		if err == nil {
+			t.Fatal("expected error when WALLET_JWT_INTERNAL_SECRET is missing, got nil")
+		}
+	})
+
+	t.Run("uses WALLET_JWT_INTERNAL_SECRET when set", func(t *testing.T) {
+		withRequiredEnvs(t)
+		t.Setenv("WALLET_JWT_INTERNAL_SECRET", "internalsecret")
+
+		cfg, err := LoadConfig()
+		if err != nil {
+			t.Fatalf("LoadConfig() returned error: %v", err)
+		}
+		if cfg.JWTInternalSecret != "internalsecret" {
+			t.Errorf("LoadConfig().JWTInternalSecret = %q, want %q", cfg.JWTInternalSecret, "internalsecret")
 		}
 	})
 }
