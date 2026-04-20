@@ -14,6 +14,8 @@ Wallet microservice built with Go, Gin, and PostgreSQL.
 WALLET_DSN="postgres://user:password@localhost:5432/wallet?sslmode=disable" \
 WALLET_PORT=3001 \
 WALLET_JWT_SECRET=ILIACHALLENGE \
+WALLET_JWT_INTERNAL_SECRET=ILIACHALLENGE_INTERNAL \
+WALLET_USERS_URL=http://localhost:3002 \
 make run
 ```
 
@@ -53,12 +55,14 @@ make fmt
 
 ## Environment Variables
 
-| Variable            | Required | Default        | Description                                             |
-|---------------------|----------|----------------|---------------------------------------------------------|
-| `WALLET_DSN`        | yes      | —              | PostgreSQL DSN                                          |
-| `WALLET_PORT`       | yes      | —              | Port the HTTP server listens on                         |
-| `WALLET_JWT_SECRET` | yes      | —              | HS256 secret used to validate JWT tokens                |
-| `WALLET_RELEASE`    | no       | `false`        | Set to `true` to run Gin in release mode (less logging) |
+| Variable                       | Required | Default        | Description                                                      |
+|--------------------------------|----------|----------------|------------------------------------------------------------------|
+| `WALLET_DSN`                   | yes      | —              | PostgreSQL DSN                                                   |
+| `WALLET_PORT`                  | yes      | —              | Port the HTTP server listens on                                  |
+| `WALLET_JWT_SECRET`            | yes      | —              | HS256 secret used to validate external JWT tokens (`ILIACHALLENGE`) |
+| `WALLET_JWT_INTERNAL_SECRET`   | yes      | —              | HS256 secret for service-to-service calls (`ILIACHALLENGE_INTERNAL`) |
+| `WALLET_USERS_URL`             | yes      | —              | Base URL of the Users service (e.g. `http://users-api:3002`)     |
+| `WALLET_RELEASE`               | no       | `false`        | Set to `true` to run Gin in release mode (less logging)          |
 
 ## Migrations
 
