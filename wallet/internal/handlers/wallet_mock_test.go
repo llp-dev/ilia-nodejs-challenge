@@ -21,7 +21,7 @@ func TestWalletHandler_List_DBError(t *testing.T) {
 			return nil, errDB
 		},
 	}
-	h := handlers.NewWalletHandler(repo)
+	h := handlers.NewWalletHandler(repo, nil)
 	r.GET("/wallets", h.List)
 
 	w := httptest.NewRecorder()
@@ -34,13 +34,18 @@ func TestWalletHandler_List_DBError(t *testing.T) {
 }
 
 func TestWalletHandler_Create_DBError(t *testing.T) {
+	const email = "user@example.com"
 	r := gin.New()
+	r.Use(func(c *gin.Context) { c.Set("userEmail", email); c.Next() })
 	repo := &mockWalletRepo{
 		createFn: func(ctx context.Context, userID, description string) (*models.Wallet, error) {
 			return nil, errDB
 		},
 	}
-	h := handlers.NewWalletHandler(repo)
+	users := &mockUsersClient{
+		getUserFn: func(ctx context.Context, userID string) (string, error) { return email, nil },
+	}
+	h := handlers.NewWalletHandler(repo, users)
 	r.POST("/wallets", h.Create)
 
 	body := []byte(`{"user_id":"550e8400-e29b-41d4-a716-446655440000"}`)

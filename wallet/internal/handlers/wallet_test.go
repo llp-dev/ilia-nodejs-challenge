@@ -15,10 +15,18 @@ import (
 	"wallet/internal/testhelper"
 )
 
+const testUserEmail = "user@example.com"
+
 func newWalletRouter() *gin.Engine {
 	r := gin.New()
+	r.Use(func(c *gin.Context) { c.Set("userEmail", testUserEmail); c.Next() })
 	walletRepo := repository.NewWalletRepository(testPool)
-	h := handlers.NewWalletHandler(walletRepo)
+	usersClient := &mockUsersClient{
+		getUserFn: func(ctx context.Context, userID string) (string, error) {
+			return testUserEmail, nil
+		},
+	}
+	h := handlers.NewWalletHandler(walletRepo, usersClient)
 	r.GET("/wallets", h.List)
 	r.GET("/wallets/:id", h.GetByID)
 	r.POST("/wallets", h.Create)
