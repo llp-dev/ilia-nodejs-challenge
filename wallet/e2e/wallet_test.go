@@ -72,7 +72,7 @@ func TestWallet_NotFound(t *testing.T) {
 	testhelper.Truncate(t, testPool)
 
 	t.Run("get non-existent wallet returns 404", func(t *testing.T) {
-		resp, err := http.Get(testServer.URL + "/wallets/00000000-0000-0000-0000-000000000000")
+		resp, err := http.DefaultClient.Do(authReq(http.MethodGet, testServer.URL+"/wallets/00000000-0000-0000-0000-000000000000", nil))
 		if err != nil {
 			t.Fatalf("GET wallet: %v", err)
 		}
@@ -93,7 +93,7 @@ func TestWallet_NotFound(t *testing.T) {
 func createWalletE2E(t *testing.T, userID, description string) models.Wallet {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{"user_id": userID, "description": description})
-	resp, err := http.Post(testServer.URL+"/wallets", "application/json", bytes.NewReader(body))
+	resp, err := http.DefaultClient.Do(authReq(http.MethodPost, testServer.URL+"/wallets", bytes.NewReader(body)))
 	if err != nil {
 		t.Fatalf("POST /wallets: %v", err)
 	}
@@ -109,7 +109,7 @@ func createWalletE2E(t *testing.T, userID, description string) models.Wallet {
 
 func listWalletsE2E(t *testing.T) []models.Wallet {
 	t.Helper()
-	resp, err := http.Get(testServer.URL + "/wallets")
+	resp, err := http.DefaultClient.Do(authReq(http.MethodGet, testServer.URL+"/wallets", nil))
 	if err != nil {
 		t.Fatalf("GET /wallets: %v", err)
 	}
@@ -125,7 +125,7 @@ func listWalletsE2E(t *testing.T) []models.Wallet {
 
 func getWalletE2E(t *testing.T, id string) models.Wallet {
 	t.Helper()
-	resp, err := http.Get(testServer.URL + "/wallets/" + id)
+	resp, err := http.DefaultClient.Do(authReq(http.MethodGet, testServer.URL+"/wallets/"+id, nil))
 	if err != nil {
 		t.Fatalf("GET /wallets/%s: %v", id, err)
 	}
@@ -142,10 +142,7 @@ func getWalletE2E(t *testing.T, id string) models.Wallet {
 func updateDescriptionE2E(t *testing.T, id, description string) models.Wallet {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{"description": description})
-	req, _ := http.NewRequest(http.MethodPut, testServer.URL+"/wallets/"+id, bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(authReq(http.MethodPut, testServer.URL+"/wallets/"+id, bytes.NewReader(body)))
 	if err != nil {
 		t.Fatalf("PUT /wallets/%s: %v", id, err)
 	}
@@ -166,11 +163,11 @@ func postTransactionE2E(t *testing.T, walletID, value, description, operationID 
 		"description":  description,
 		"operation_id": operationID,
 	})
-	resp, err := http.Post(
+	resp, err := http.DefaultClient.Do(authReq(
+		http.MethodPost,
 		fmt.Sprintf("%s/wallets/%s/transactions", testServer.URL, walletID),
-		"application/json",
 		bytes.NewReader(body),
-	)
+	))
 	if err != nil {
 		t.Fatalf("POST /wallets/%s/transactions: %v", walletID, err)
 	}

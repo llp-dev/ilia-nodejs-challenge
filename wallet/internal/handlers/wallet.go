@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -57,10 +59,20 @@ func (h *WalletHandler) Create(c *gin.Context) {
 func (h *WalletHandler) UpdateDescription(c *gin.Context) {
 	id := c.Param("id")
 	var body struct {
-		Description string `json:"description" binding:"required"`
+		Description string `json:"description"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	dec := json.NewDecoder(c.Request.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&body); err != nil {
+		msg := "invalid request body"
+		if strings.Contains(err.Error(), "unknown field") {
+			msg = "unknown fields are not allowed"
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+	if body.Description == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "description is required"})
 		return
 	}
 

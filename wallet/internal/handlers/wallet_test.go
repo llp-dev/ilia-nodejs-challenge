@@ -180,6 +180,29 @@ func TestWalletHandler_UpdateDescription(t *testing.T) {
 		}
 	})
 
+	t.Run("returns 400 for unknown fields", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"description": "x", "unknown": "field"})
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPut, "/wallets/"+wallet.ID, bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		}
+	})
+
+	t.Run("returns 400 for invalid JSON", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPut, "/wallets/"+wallet.ID, bytes.NewReader([]byte(`not-json`)))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		}
+	})
+
 	t.Run("returns 404 for non-existent wallet", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]string{"description": "x"})
 		w := httptest.NewRecorder()

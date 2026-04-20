@@ -8,6 +8,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func TestServer_Handler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	s := New(nil, "test-secret")
+	h := s.Handler()
+	if h == nil {
+		t.Fatal("Handler() returned nil")
+	}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
 func TestServer_Routes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
