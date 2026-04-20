@@ -5,9 +5,11 @@ import (
 	"testing"
 )
 
-func withDSN(t *testing.T) {
+func withRequiredEnvs(t *testing.T) {
 	t.Helper()
 	t.Setenv("WALLET_DSN", "postgres://user:pass@localhost:5432/wallet")
+	t.Setenv("WALLET_PORT", "3001")
+	t.Setenv("WALLET_JWT_SECRET", "ILIACHALLENGE")
 }
 
 func TestLoadConfig_Port(t *testing.T) {
@@ -15,6 +17,7 @@ func TestLoadConfig_Port(t *testing.T) {
 		name     string
 		envValue string
 		wantPort string
+		wantErr  bool
 	}{
 		{
 			name:     "uses WALLET_PORT when set",
@@ -22,9 +25,8 @@ func TestLoadConfig_Port(t *testing.T) {
 			wantPort: "8080",
 		},
 		{
-			name:     "defaults to 3001 when WALLET_PORT is empty",
-			envValue: "",
-			wantPort: "3001",
+			name:    "errors when WALLET_PORT is not set",
+			wantErr: true,
 		},
 		{
 			name:     "accepts non-standard port",
@@ -35,7 +37,7 @@ func TestLoadConfig_Port(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withDSN(t)
+			withRequiredEnvs(t)
 
 			if tt.envValue != "" {
 				t.Setenv("WALLET_PORT", tt.envValue)
@@ -44,6 +46,12 @@ func TestLoadConfig_Port(t *testing.T) {
 			}
 
 			cfg, err := LoadConfig()
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("LoadConfig() returned error: %v", err)
 			}
@@ -62,7 +70,6 @@ func TestLoadConfig_Release(t *testing.T) {
 	}{
 		{
 			name:        "defaults to false when WALLET_RELEASE is unset",
-			envValue:    "",
 			wantRelease: false,
 		},
 		{
@@ -84,7 +91,7 @@ func TestLoadConfig_Release(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			withDSN(t)
+			withRequiredEnvs(t)
 
 			if tt.envValue != "" {
 				t.Setenv("WALLET_RELEASE", tt.envValue)
@@ -105,6 +112,7 @@ func TestLoadConfig_Release(t *testing.T) {
 
 func TestLoadConfig_DSN(t *testing.T) {
 	t.Run("errors when WALLET_DSN is not set", func(t *testing.T) {
+		withRequiredEnvs(t)
 		os.Unsetenv("WALLET_DSN")
 		_, err := LoadConfig()
 		if err == nil {
@@ -113,6 +121,7 @@ func TestLoadConfig_DSN(t *testing.T) {
 	})
 
 	t.Run("uses WALLET_DSN when set", func(t *testing.T) {
+		withRequiredEnvs(t)
 		dsn := "postgres://user:pass@localhost:5432/wallet"
 		t.Setenv("WALLET_DSN", dsn)
 
@@ -122,6 +131,30 @@ func TestLoadConfig_DSN(t *testing.T) {
 		}
 		if cfg.DSN != dsn {
 			t.Errorf("LoadConfig().DSN = %q, want %q", cfg.DSN, dsn)
+		}
+	})
+}
+
+func TestLoadConfig_JWTSecret(t *testing.T) {
+	t.Run("errors when WALLET_JWT_SECRET is not set", func(t *testing.T) {
+		withRequiredEnvs(t)
+		os.Unsetenv("WALLET_JWT_SECRET")
+		_, err := LoadConfig()
+		if err == nil {
+			t.Fatal("expected error when WALLET_JWT_SECRET is missing, got nil")
+		}
+	})
+
+	t.Run("uses WALLET_JWT_SECRET when set", func(t *testing.T) {
+		withRequiredEnvs(t)
+		t.Setenv("WALLET_JWT_SECRET", "mysecret")
+
+		cfg, err := LoadConfig()
+		if err != nil {
+			t.Fatalf("LoadConfig() returned error: %v", err)
+		}
+		if cfg.JWTSecret != "mysecret" {
+			t.Errorf("LoadConfig().JWTSecret = %q, want %q", cfg.JWTSecret, "mysecret")
 		}
 	})
 }

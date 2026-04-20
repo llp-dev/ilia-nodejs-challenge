@@ -19,9 +19,6 @@ func JWT(secret string) gin.HandlerFunc {
 
 		tokenStr := strings.TrimPrefix(auth, "Bearer ")
 		_, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
 			return key, nil
 		}, jwt.WithValidMethods([]string{"HS256"}))
 		if err != nil {
