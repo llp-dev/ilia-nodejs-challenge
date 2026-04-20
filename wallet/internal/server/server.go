@@ -10,6 +10,8 @@ import (
 	"wallet/internal/repository"
 )
 
+const maxBodyBytes = 64 * 1024 // 64 KB
+
 type Server struct {
 	dbPool    *pgxpool.Pool
 	router    *gin.Engine
@@ -27,6 +29,11 @@ func New(dbPool *pgxpool.Pool, jwtSecret string) *Server {
 }
 
 func (s *Server) setupRoutes() {
+	s.router.Use(func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodyBytes)
+		c.Next()
+	})
+
 	walletRepo := repository.NewWalletRepository(s.dbPool)
 	transactionRepo := repository.NewTransactionRepository(s.dbPool)
 
