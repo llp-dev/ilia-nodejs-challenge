@@ -44,7 +44,7 @@ func (s *Server) setupRoutes() {
 
 	usersClient := usersclient.New(s.usersURL, s.jwtInternalSecret)
 	walletHandler := handlers.NewWalletHandler(walletRepo, usersClient)
-	transactionHandler := handlers.NewTransactionHandler(transactionRepo)
+	transactionHandler := handlers.NewTransactionHandler(transactionRepo, walletRepo)
 
 	s.router.GET("/health", handlers.HealthHandler)
 
