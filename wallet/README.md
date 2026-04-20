@@ -8,10 +8,22 @@ Wallet microservice built with Go, Gin, and PostgreSQL.
 - PostgreSQL
 - Make
 
-## Running
+## Running locally
 
 ```bash
-WALLET_DSN="postgres://user:password@localhost:5432/wallet?sslmode=disable" make run
+WALLET_DSN="postgres://user:password@localhost:5432/wallet?sslmode=disable" \
+WALLET_PORT=3001 \
+WALLET_JWT_SECRET=ILIACHALLENGE \
+make run
+```
+
+## Running with Docker
+
+```bash
+cp .env.example .env  # fill in the values
+make up               # build and start all containers
+make down             # stop containers
+make clean            # stop containers, remove volumes and images
 ```
 
 ## Building
@@ -41,11 +53,12 @@ make fmt
 
 ## Environment Variables
 
-| Variable         | Default    | Description                                             |
-|------------------|------------|---------------------------------------------------------|
-| `WALLET_DSN`     | (required) | PostgreSQL DSN                                          |
-| `WALLET_PORT`    | `3001`     | Port the HTTP server listens on                         |
-| `WALLET_RELEASE` | `false`    | Set to `true` to run Gin in release mode (less logging) |
+| Variable            | Required | Default        | Description                                             |
+|---------------------|----------|----------------|---------------------------------------------------------|
+| `WALLET_DSN`        | yes      | —              | PostgreSQL DSN                                          |
+| `WALLET_PORT`       | yes      | —              | Port the HTTP server listens on                         |
+| `WALLET_JWT_SECRET` | yes      | —              | HS256 secret used to validate JWT tokens                |
+| `WALLET_RELEASE`    | no       | `false`        | Set to `true` to run Gin in release mode (less logging) |
 
 ## Migrations
 
@@ -53,14 +66,16 @@ Migrations run automatically on startup via goose. No separate step required.
 
 ## Endpoints
 
-| Method | Path                          | Description                    |
-|--------|-------------------------------|--------------------------------|
-| GET    | `/health`                     | Health check                   |
-| GET    | `/wallets`                    | List all wallets               |
-| GET    | `/wallets/:id`                | Get wallet by ID               |
-| POST   | `/wallets`                    | Create a wallet                |
-| PUT    | `/wallets/:id`                | Update wallet description      |
-| POST   | `/wallets/:id/transactions`   | Post a transaction to a wallet |
+All endpoints except `/health` require a valid HS256 JWT token in the `Authorization: Bearer <token>` header.
+
+| Method | Path                          | Auth | Description                    |
+|--------|-------------------------------|------|--------------------------------|
+| GET    | `/health`                     | —    | Health check                   |
+| GET    | `/wallets`                    | ✓    | List all wallets               |
+| GET    | `/wallets/:id`                | ✓    | Get wallet by ID               |
+| POST   | `/wallets`                    | ✓    | Create a wallet                |
+| PUT    | `/wallets/:id`                | ✓    | Update wallet description      |
+| POST   | `/wallets/:id/transactions`   | ✓    | Post a transaction to a wallet |
 
 ### POST /wallets
 
