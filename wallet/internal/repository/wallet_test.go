@@ -61,26 +61,41 @@ func TestWalletRepository_GetByID(t *testing.T) {
 	})
 }
 
-func TestWalletRepository_List(t *testing.T) {
+func TestWalletRepository_ListByUserID(t *testing.T) {
 	testhelper.Truncate(t, testPool)
 	repo := repository.NewWalletRepository(testPool)
 	ctx := context.Background()
 
-	_, err := repo.Create(ctx, "550e8400-e29b-41d4-a716-446655440000", "wallet one")
+	userA := "550e8400-e29b-41d4-a716-446655440000"
+	userB := "550e8400-e29b-41d4-a716-446655440001"
+
+	_, err := repo.Create(ctx, userA, "wallet one")
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	_, err = repo.Create(ctx, "550e8400-e29b-41d4-a716-446655440001", "wallet two")
+	_, err = repo.Create(ctx, userA, "wallet two")
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	_, err = repo.Create(ctx, userB, "wallet three")
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	wallets, err := repo.List(ctx)
+	wallets, err := repo.ListByUserID(ctx, userA)
 	if err != nil {
-		t.Fatalf("List() error = %v", err)
+		t.Fatalf("ListByUserID() error = %v", err)
 	}
 	if len(wallets) != 2 {
-		t.Errorf("List() returned %d wallets, want 2", len(wallets))
+		t.Errorf("ListByUserID() returned %d wallets, want 2", len(wallets))
+	}
+
+	wallets, err = repo.ListByUserID(ctx, userB)
+	if err != nil {
+		t.Fatalf("ListByUserID() error = %v", err)
+	}
+	if len(wallets) != 1 {
+		t.Errorf("ListByUserID() returned %d wallets, want 1", len(wallets))
 	}
 }
 

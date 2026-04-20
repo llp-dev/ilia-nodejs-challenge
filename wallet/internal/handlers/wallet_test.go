@@ -15,11 +15,18 @@ import (
 	"wallet/internal/testhelper"
 )
 
-const testUserEmail = "user@example.com"
+const (
+	testUserID    = "550e8400-e29b-41d4-a716-446655440000"
+	testUserEmail = "user@example.com"
+)
 
 func newWalletRouter() *gin.Engine {
 	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("userEmail", testUserEmail); c.Next() })
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", testUserID)
+		c.Set("userEmail", testUserEmail)
+		c.Next()
+	})
 	walletRepo := repository.NewWalletRepository(testPool)
 	usersClient := &mockUsersClient{
 		getUserFn: func(ctx context.Context, userID string) (string, error) {
@@ -63,9 +70,10 @@ func TestWalletHandler_List(t *testing.T) {
 		}
 	})
 
-	t.Run("returns created wallets", func(t *testing.T) {
-		createWallet(t, "550e8400-e29b-41d4-a716-446655440000", "wallet one")
-		createWallet(t, "550e8400-e29b-41d4-a716-446655440001", "wallet two")
+	t.Run("returns only wallets owned by authenticated user", func(t *testing.T) {
+		createWallet(t, testUserID, "wallet one")
+		createWallet(t, testUserID, "wallet two")
+		createWallet(t, "550e8400-e29b-41d4-a716-446655440001", "other user wallet")
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/wallets", nil)
@@ -85,7 +93,7 @@ func TestWalletHandler_List(t *testing.T) {
 func TestWalletHandler_GetByID(t *testing.T) {
 	testhelper.Truncate(t, testPool)
 	r := newWalletRouter()
-	wallet := createWallet(t, "550e8400-e29b-41d4-a716-446655440000", "my wallet")
+	wallet := createWallet(t, testUserID, "my wallet")
 
 	t.Run("returns wallet by id", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -99,6 +107,17 @@ func TestWalletHandler_GetByID(t *testing.T) {
 		json.NewDecoder(w.Body).Decode(&result)
 		if result.ID != wallet.ID {
 			t.Errorf("ID = %q, want %q", result.ID, wallet.ID)
+		}
+	})
+
+	t.Run("returns 403 for wallet owned by another user", func(t *testing.T) {
+		other := createWallet(t, "550e8400-e29b-41d4-a716-446655440001", "other user wallet")
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/wallets/"+other.ID, nil)
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
 		}
 	})
 
@@ -119,7 +138,7 @@ func TestWalletHandler_Create(t *testing.T) {
 
 	t.Run("creates wallet", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]string{
-			"user_id":     "550e8400-e29b-41d4-a716-446655440000",
+			"user_id":     testUserID,
 			"description": "new wallet",
 		})
 		w := httptest.NewRecorder()
@@ -135,8 +154,8 @@ func TestWalletHandler_Create(t *testing.T) {
 		if result.ID == "" {
 			t.Error("expected non-empty ID")
 		}
-		if result.UserID != "550e8400-e29b-41d4-a716-446655440000" {
-			t.Errorf("UserID = %q, want %q", result.UserID, "550e8400-e29b-41d4-a716-446655440000")
+		if result.UserID != testUserID {
+			t.Errorf("UserID = %q, want %q", result.UserID, testUserID)
 		}
 	})
 
@@ -158,7 +177,7 @@ func TestWalletHandler_Create(t *testing.T) {
 func TestWalletHandler_UpdateDescription(t *testing.T) {
 	testhelper.Truncate(t, testPool)
 	r := newWalletRouter()
-	wallet := createWallet(t, "550e8400-e29b-41d4-a716-446655440000", "original")
+	wallet := createWallet(t, testUserID, "original")
 
 	t.Run("updates description", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]string{"description": "updated"})
@@ -208,6 +227,19 @@ func TestWalletHandler_UpdateDescription(t *testing.T) {
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		}
+	})
+
+	t.Run("returns 403 for wallet owned by another user", func(t *testing.T) {
+		other := createWallet(t, "550e8400-e29b-41d4-a716-446655440001", "other user")
+		body, _ := json.Marshal(map[string]string{"description": "hijack"})
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPut, "/wallets/"+other.ID, bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", w.Code, http.StatusForbidden)
 		}
 	})
 

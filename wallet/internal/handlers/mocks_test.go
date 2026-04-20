@@ -12,14 +12,14 @@ var errDB = errors.New("connection refused")
 
 // mockWalletRepo is a configurable stub for the walletRepository interface.
 type mockWalletRepo struct {
-	listFn              func(ctx context.Context) ([]models.Wallet, error)
+	listByUserIDFn      func(ctx context.Context, userID string) ([]models.Wallet, error)
 	getByIDFn           func(ctx context.Context, id string) (*models.Wallet, error)
 	createFn            func(ctx context.Context, userID, description string) (*models.Wallet, error)
 	updateDescriptionFn func(ctx context.Context, id, description string) (*models.Wallet, error)
 }
 
-func (m *mockWalletRepo) List(ctx context.Context) ([]models.Wallet, error) {
-	return m.listFn(ctx)
+func (m *mockWalletRepo) ListByUserID(ctx context.Context, userID string) ([]models.Wallet, error) {
+	return m.listByUserIDFn(ctx, userID)
 }
 
 func (m *mockWalletRepo) GetByID(ctx context.Context, id string) (*models.Wallet, error) {

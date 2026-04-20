@@ -16,8 +16,9 @@ import (
 
 func TestWalletHandler_List_DBError(t *testing.T) {
 	r := gin.New()
+	r.Use(func(c *gin.Context) { c.Set("userID", "some-user"); c.Next() })
 	repo := &mockWalletRepo{
-		listFn: func(ctx context.Context) ([]models.Wallet, error) {
+		listByUserIDFn: func(ctx context.Context, userID string) ([]models.Wallet, error) {
 			return nil, errDB
 		},
 	}
@@ -60,13 +61,20 @@ func TestWalletHandler_Create_DBError(t *testing.T) {
 }
 
 func TestTransactionHandler_Create_DBError(t *testing.T) {
+	const ownerID = "owner-user-id"
 	r := gin.New()
+	r.Use(func(c *gin.Context) { c.Set("userID", ownerID); c.Next() })
+	walletRepo := &mockWalletRepo{
+		getByIDFn: func(ctx context.Context, id string) (*models.Wallet, error) {
+			return &models.Wallet{ID: id, UserID: ownerID}, nil
+		},
+	}
 	repo := &mockTransactionRepo{
 		createFn: func(ctx context.Context, walletID string, value decimal.Decimal, description, operationID string) (*models.Transaction, error) {
 			return nil, errDB
 		},
 	}
-	h := handlers.NewTransactionHandler(repo)
+	h := handlers.NewTransactionHandler(repo, walletRepo)
 	r.POST("/wallets/:id/transactions", h.Create)
 
 	body := []byte(`{"value":"10.00","description":"test","operation_id":"550e8400-e29b-41d4-a716-446655440000"}`)
@@ -81,13 +89,20 @@ func TestTransactionHandler_Create_DBError(t *testing.T) {
 }
 
 func TestTransactionHandler_Create_DuplicateOperation(t *testing.T) {
+	const ownerID = "owner-user-id"
 	r := gin.New()
+	r.Use(func(c *gin.Context) { c.Set("userID", ownerID); c.Next() })
+	walletRepo := &mockWalletRepo{
+		getByIDFn: func(ctx context.Context, id string) (*models.Wallet, error) {
+			return &models.Wallet{ID: id, UserID: ownerID}, nil
+		},
+	}
 	repo := &mockTransactionRepo{
 		createFn: func(ctx context.Context, walletID string, value decimal.Decimal, description, operationID string) (*models.Transaction, error) {
 			return nil, repository.ErrDuplicateOperation
 		},
 	}
-	h := handlers.NewTransactionHandler(repo)
+	h := handlers.NewTransactionHandler(repo, walletRepo)
 	r.POST("/wallets/:id/transactions", h.Create)
 
 	body := []byte(`{"value":"10.00","description":"test","operation_id":"550e8400-e29b-41d4-a716-446655440000"}`)
