@@ -39,7 +39,7 @@ func TestServer_Routes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := New(nil)
+			s := New(nil, "test-secret")
 
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(tt.method, tt.path, nil)

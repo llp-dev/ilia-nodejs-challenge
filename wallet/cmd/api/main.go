@@ -34,7 +34,7 @@ func main() {
 
 	fmt.Fprintf(gin.DefaultWriter, "[WALLET] Listening on port :%s\n", cfg.Port)
 
-	s := server.New(dbPool)
+	s := server.New(dbPool, cfg.JWTSecret)
 
 	err = s.Run(cfg.Port)
 	if err != nil {
